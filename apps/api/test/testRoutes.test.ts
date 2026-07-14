@@ -19,7 +19,7 @@ async function seedTask(
 	return result.rows[0];
 }
 
-describe("task API", () => {
+describe("task routes", () => {
 	beforeEach(async () => {
 		await pool.query("TRUNCATE tasks RESTART IDENTITY");
 	});
@@ -103,13 +103,17 @@ describe("task API", () => {
 
 		const response = await request(app).get(`/tasks/${task.id}`).expect(404);
 
-		expect(response.body).toEqual({ error: "Task not found" });
+		expect(response.body).toEqual({
+			error: "The specified task was not found",
+		});
 	});
 
 	test("missing tasks return 404", async () => {
 		const response = await request(app).get("/tasks/999").expect(404);
 
-		expect(response.body).toEqual({ error: "Task not found" });
+		expect(response.body).toEqual({
+			error: "The specified task was not found",
+		});
 	});
 
 	test("POST /tasks rejects a missing title", async () => {
@@ -118,6 +122,61 @@ describe("task API", () => {
 			.send({ description: "No title here" })
 			.expect(400);
 
-		expect(response.body).toEqual({ error: "Title is required" });
+		expect(response.body).toEqual({
+			error: "Tasks must have a title",
+		});
+	});
+
+	test("POST /tasks rejects an invalid description", async () => {
+		const response = await request(app)
+			.post("/tasks")
+			.send({
+				title: "Invalid description",
+				description: 123,
+			})
+			.expect(400);
+
+		expect(response.body).toEqual({
+			error: "The description must be of type string",
+		});
+	});
+
+	test("PATCH /tasks/:id rejects an empty update body", async () => {
+		const task = await seedTask("No updates");
+
+		const response = await request(app)
+			.patch(`/tasks/${task.id}`)
+			.send({})
+			.expect(400);
+
+		expect(response.body).toEqual({
+			error: "Provide title, description, or status to update",
+		});
+	});
+
+	test("PATCH /tasks/:id rejects an invalid title", async () => {
+		const task = await seedTask("Invalid title");
+
+		const response = await request(app)
+			.patch(`/tasks/${task.id}`)
+			.send({ title: "" })
+			.expect(400);
+
+		expect(response.body).toEqual({
+			error: "Title must be a string",
+		});
+	});
+
+	test("PATCH /tasks/:id rejects an invalid status", async () => {
+		const task = await seedTask("Invalid status");
+
+		const response = await request(app)
+			.patch(`/tasks/${task.id}`)
+			.send({ status: "" })
+			.expect(400);
+
+		expect(response.body).toEqual({
+			error: "Status must be a string",
+		});
 	});
 });

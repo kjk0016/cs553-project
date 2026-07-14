@@ -37,6 +37,10 @@ apps/api/
 | `src/config/env.ts` | Loads environment variables from the root `.env` file. |
 | `test/taskRoutes.test.ts` | Contains automated tests for the task routes. |
 
+## Prerequisites
+
+You must have the following installed for this to run in your environemnt `npm, docker, postgresql-client-common, postgresql-client`
+
 ## Installing Dependencies
 
 cd into apps/api and run npm install.
