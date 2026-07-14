@@ -3,10 +3,10 @@ version: "3.9"
 services:
   postgres:
     image: postgres:16
-    container_name: cs453-postgres
+    container_name: cs553-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: cs453
+      POSTGRES_DB: cs553
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
