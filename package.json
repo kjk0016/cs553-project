@@ -11,7 +11,7 @@
 		"format": "biome format --write .",
 		"lint": "biome lint .",
 		"check": "biome check .",
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"test": "npm --prefix apps/api test"
 	},
 	"repository": {
 		"type": "git",

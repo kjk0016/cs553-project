@@ -22,13 +22,13 @@ or
 npm run db:reset
 ```
 ## Default connection settings
-- Database: cs453 
+- Database: cs553 
 - User: postgres 
 - Password: postgres 
 - Port: 5432
 
 ```dotenv
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cs453
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cs553
 ```
 
 ## Creating tables
@@ -36,5 +36,5 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cs453
 Run the schema file against the local database after PostgreSQL is running:
 
 ```shell
-psql postgresql://postgres:postgres@localhost:5432/cs453 -f database/schema.sql
+psql postgresql://postgres:postgres@localhost:5432/cs553 -f database/schema.sql
 ```

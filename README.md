@@ -99,7 +99,7 @@ all examples and starter code will use **TypeScript**.
 # Repository Structure
 
 ```shell
-cs453-project-template
+cs553-project-template
 │
 ├── apps
 │ ├── api
