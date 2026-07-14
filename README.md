@@ -1,6 +1,11 @@
 
 # CS453/553 Client-Server Architecture Project
 
+# Notice
+
+For information related to the checkpoint 1 submission, please navigate to `apps/api/` and read the `README.md` located there.
+
+
 This repository contains the **starter template** for the semester project in  
 **CS453 / CS553 – Client/Server Architectures**.
 
