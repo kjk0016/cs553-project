@@ -202,3 +202,33 @@ Requesting a task ID that does not exist returns `404`:
   "error": "Task not found"
 }
 ```
+
+## Reflection Questions
+Answer the following questions in your README or in a separate file such as answers.md.
+
+1.What is the difference between an in-memory API and a database-backed API?
+
+The difference between an in-memory API and a database-backed API, is that one stores information in memory during runtime, and the other stores information in an external database. With an in-memory API the information is saved on the server, while it is running. This means that information can only be stored so long as the server is running, and once it is taken down all of that information is lost. This means the information is not persistent. However, with a database-backed API the information is stored in an independent external database. While maintaining a database, alongside the API, is more work it allows stored information to be saved even when the server is no longer running. Is is necessary for pretty much all practical production environments, as losing important information due to a server outage would be devestating. 
+
+2.Why is it useful to separate routes, services, and database logic?
+
+The reason it is useful to separate routes, services, and database logic, is that it makes the overall codebase easier to understand, maintain, and test. Breaking the overall application into smaller, specialized sections allows developers to work on one part of the system without having to search through one massive file containing irrelevant code focused on other parts. For example, if a developer wanted to add, modify, or remouve a route, they could go directly to the routes file, instead of having to search through service and database logic too. This seperation is especially useful when updates are required, as one section can be changed without needed to change the entire application. Finally it improves testing as routes, services, and database logic can be tested individually instead of all together. 
+
+3.What HTTP status codes did you use, and why?
+
+The status codes I used were `200`, `201`, `204`, `400`, `404`, and `500`.
+
+- 200 was used to show that a task was succesfully received and processed.
+- 201 was used to show that a task was succesfully created.
+- 204 was used to show that a task was successfully deleted, and there is no response body to return.
+- 400 was used to inform the user that an invalid request was made.
+- 404 was used to inform the user that a valid request was made, but the specific task id requested could not be found.
+- 500 was used to inform the user of an internal server or database error.
+
+4.What happens when a client requests a task ID that does not exist?
+
+When a client requests a task ID that does not exist, the server catches that during taskID verification, and sends a `404` error to inform the user the specified task was not found.
+
+5.What was the hardest part of connecting the API to PostgreSQL?
+
+The hardest part of connecting the API to PostgreSQL, was writing the SQL queries in `taskService.ts`. With a decent amount of the connection work already being completed in the starter, the hardest thing was figuring out how to write sql queries that matched the logic expected of the routes. It has been a long time since I've had to work with sql statements, so I found refreshing myself on how to use placeholders and certain statements to be the most time consuming aspect of the database connection. 
