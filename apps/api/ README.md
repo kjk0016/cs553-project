@@ -1,9 +1,11 @@
 # Task API
 
-This API is the server-side portion of the CS553 task tracking project.
+This API is the server-side portion of the CS553 task and project tracking
+application.
 
-It uses Express, TypeScript, and PostgreSQL to provide a small database-backed
-REST API for tasks.
+It uses Express, TypeScript, and PostgreSQL to provide user registration, JWT
+authentication, project ownership, role-based authorization, and task CRUD
+operations.
 
 ## Project Structure
 
@@ -11,35 +13,57 @@ Current structure:
 
 ```shell
 apps/api/
+|-- README.md
+|-- package-lock.json
 |-- package.json
+|-- tsconfig.json
 |-- src/
 |   |-- server.ts
 |   |-- config/
 |   |   `-- env.ts
 |   |-- db/
 |   |   `-- pool.ts
+|   |-- middleware/
+|   |   |-- authenticate.ts
+|   |   `-- authorize.ts
 |   |-- routes/
-|   |   `-- taskRoutes.ts
+|   |   |-- authRoutes.ts
+|   |   |-- projectRoutes.ts
+|   |   |-- taskRoutes.ts
+|   |   `-- userRoutes.ts
 |   `-- services/
-|       `-- taskService.ts
+|       |-- authService.ts
+|       |-- projectService.ts
+|       |-- taskService.ts
+|       `-- userService.ts
 `-- test/
-    `-- taskRoutes.test.ts
+    `-- testRoutes.test.ts
 ```
 
 ## File Descriptions
 
 | File | Purpose |
 | --- | --- |
+| `package.json` | Defines the API dependencies and npm scripts. |
 | `src/server.ts` | Creates the Express app and starts the API server. |
+| `src/config/env.ts` | Loads and validates the root environment variables. |
+| `src/db/pool.ts` | Creates the shared PostgreSQL connection pool. |
+| `src/middleware/authenticate.ts` | Verifies Bearer tokens and stores the authenticated user for later routes. |
+| `src/middleware/authorize.ts` | Checks administrator roles and project ownership. |
+| `src/routes/authRoutes.ts` | Defines registration, login, and current-user routes. |
+| `src/routes/projectRoutes.ts` | Defines project routes, validation, and ownership checks. |
 | `src/routes/taskRoutes.ts` | Defines the task HTTP routes and request validation. |
+| `src/routes/userRoutes.ts` | Defines the administrator-only user route. |
+| `src/services/authService.ts` | Hashes passwords, verifies credentials, and creates JWTs. |
+| `src/services/projectService.ts` | Contains the PostgreSQL queries for projects. |
 | `src/services/taskService.ts` | Contains the PostgreSQL queries for tasks. |
-| `src/db/pool.ts` | Creates the PostgreSQL connection pool. |
-| `src/config/env.ts` | Loads environment variables from the root `.env` file. |
-| `test/taskRoutes.test.ts` | Contains automated tests for the task routes. |
+| `src/services/userService.ts` | Contains user queries and excludes password hashes from public responses. |
+| `test/testRoutes.test.ts` | Contains automated tests for task, project, authentication, and authorization routes. |
+| `tsconfig.json` | Configures the TypeScript compiler. |
 
 ## Prerequisites
 
-You must have the following installed for this to run in your environemnt `npm, docker, postgresql-client-common, postgresql-client`
+You must have `npm, docker, docker compose, postgresql-client-common, postgresql-client` installed.
 
 ## Installing Dependencies
 
@@ -50,12 +74,59 @@ cd apps/api
 npm install
 ```
 
-## Default connection settings
+## Environment configuration
 
-- Database: cs553
-- User: postgres
-- Password: postgres
-- Port: 5432
+From the repository root, create the required `.env` file by copying
+`.env.example`:
+
+```shell
+cp .env.example .env
+```
+
+The committed `.env.example` file contains placeholders only. Open the new
+`.env` file and replace every `replace_with_...` value before starting the
+database or API.
+
+### Database Credentials
+
+Choose a database name, database user, and database password.
+
+
+Build `DATABASE_URL` using the same database name, user, and password:
+
+```dotenv
+POSTGRES_DB=your_database_name
+POSTGRES_USER=your_database_user
+POSTGRES_PASSWORD=your_generated_database_password
+DATABASE_URL=postgresql://your_database_user:your_generated_database_password@localhost:5432/your_database_name
+PORT=3000
+```
+
+### JWT Secret
+
+Generate a separate JWT secret locally:
+
+```shell
+openssl rand -hex 32
+```
+
+Copy the generated value into `.env`:
+
+```dotenv
+JWT_SECRET=your_generated_jwt_secret
+```
+
+The JWT secret is used to sign and verify access tokens. Do not reuse the
+database password as the JWT secret.
+
+The API reads `.env` automatically. To use `DATABASE_URL` with `psql` commands
+in the current Linux terminal, load the values into the shell:
+
+```shell
+set -a
+source .env
+set +a
+```
 
 ## Starting PostgreSQL
 
@@ -88,8 +159,24 @@ npm run db:reset
 Run the schema file against the local database after PostgreSQL is running:
 
 ```shell
-psql postgresql://postgres:postgres@localhost:5432/cs553 -f database/schema.sql
+psql "$DATABASE_URL" -f database/schema.sql
 ```
+
+This command uses the database connection created in `.env` and loaded into the
+current shell. The schema creates the `users`, `projects`, and `tasks` tables.
+
+## Creating an Administrator
+
+All accounts created through `POST /auth/register` receive the normal `user`
+role. Register the account first, then promote it directly in PostgreSQL:
+
+```shell
+psql "$DATABASE_URL" -c "UPDATE users SET role = 'admin' WHERE email = 'admin@example.com';"
+```
+
+Replace `admin@example.com` with any email. Log in
+again after changing the role so that the new JWT contains the `admin` role.
+Clients cannot choose the administrator role during registration.
 
 ## Starting the Server
 
@@ -97,7 +184,6 @@ Navigate to the repo's root and run
 
 ```shell
 npm run dev
-```
 ```
 
 The server runs on port `3000` by default:
@@ -110,48 +196,122 @@ To use a different port, set `PORT` in the root `.env` file:
 
 ## Testing
 
-For automated testing, navigate to the root and run:
+The automated tests use PostgreSQL and clear the `users`, `projects`, and
+`tasks` tables before each test. Use a separate test database so development
+data is not deleted.
+
+To create the test database and apply the schema:
 
 ```shell
-npm test
+TEST_DATABASE_NAME="${POSTGRES_DB}_test"
+TEST_DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${TEST_DATABASE_NAME}"
+psql "$DATABASE_URL" -c "CREATE DATABASE \"${TEST_DATABASE_NAME}\";"
+psql "$TEST_DATABASE_URL" -f database/schema.sql
 ```
 
-For manual testing example curl commands have been provided. 
+If the test database already exists, skip the `CREATE DATABASE` command and
+reapply the schema.
 
-#### Example curl Commands
+From the repository root, temporarily point the API at the test database and
+run the tests:
 
-Check the API health:
+```shell
+DATABASE_URL="$TEST_DATABASE_URL" npm test
+```
+
+## Registration, Login, and JWT Requests
+
+The names, emails, and passwords below are sample request values only. Replace
+them when creating your own local account.
+
+### Check the API Health
 
 ```shell
 curl http://localhost:3000/health
 ```
 
-Create a task:
+### Registering a User
+
+```shell
+curl -X POST http://localhost:3000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Ada Lovelace","email":"ada@example.com","password":"example-password"}'
+```
+
+### Logging In
+
+```shell
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"ada@example.com","password":"example-password"}'
+```
+
+Login returns the user and an `accessToken`:
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "tokenType": "Bearer",
+  "expiresIn": "1h",
+  "user": {
+    "id": 1,
+    "name": "Ada Lovelace",
+    "email": "ada@example.com",
+    "role": "user",
+    "createdAt": "2026-07-31T12:00:00.000Z"
+  }
+}
+```
+
+### Sending a JWT with a Request
+
+Send the `accessToken` to protected routes using the Bearer format:
+
+```text
+Authorization: Bearer <access-token>
+```
+
+### Protected Route Examples
+
+Create a project:
+
+```shell
+curl -X POST http://localhost:3000/projects \
+  -H "Authorization: Bearer <access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Checkpoint 2","description":"Authentication and authorization"}'
+```
+
+Create a task associated with the project:
 
 ```shell
 curl -X POST http://localhost:3000/tasks \
+  -H "Authorization: Bearer <access-token>" \
   -H "Content-Type: application/json" \
-  -d "{\"title\":\"Create task API\",\"description\":\"Implement CRUD routes\"}"
+  -d '{"title":"Create task API","description":"Implement CRUD routes","projectId":1}'
 ```
 
 Get all tasks:
 
 ```shell
-curl http://localhost:3000/tasks
+curl http://localhost:3000/tasks \
+  -H "Authorization: Bearer <access-token>"
 ```
 
 Update a task:
 
 ```shell
 curl -X PATCH http://localhost:3000/tasks/1 \
+  -H "Authorization: Bearer <access-token>" \
   -H "Content-Type: application/json" \
-  -d "{\"status\":\"done\"}"
+  -d '{"status":"done"}'
 ```
 
 Delete a task:
 
 ```shell
-curl -X DELETE http://localhost:3000/tasks/1
+curl -X DELETE http://localhost:3000/tasks/1 \
+  -H "Authorization: Bearer <access-token>"
 ```
 
 ## Supported Routes
@@ -160,15 +320,65 @@ curl -X DELETE http://localhost:3000/tasks/1
 | --- | --- | --- |
 | `GET` | `/health` | Check whether the API server is running. |
 | `GET` | `/db-health` | Check whether the API can connect to PostgreSQL. |
-| `GET` | `/tasks` | Return all tasks. |
-| `POST` | `/tasks` | Create a new task. |
-| `GET` | `/tasks/:id` | Return one task by ID. |
-| `PATCH` | `/tasks/:id` | Update an existing task. |
-| `DELETE` | `/tasks/:id` | Delete an existing task. |
+| `POST` | `/auth/register` | Register a normal user account. |
+| `POST` | `/auth/login` | Log in and receive a JWT access token. |
+| `GET` | `/auth/me` | Return the authenticated user. Requires authentication. |
+| `GET` | `/users` | Return all users. Requires authentication and the `admin` role. |
+| `GET` | `/projects` | Return all projects. Requires authentication. |
+| `POST` | `/projects` | Create a project owned by the authenticated user. Requires authentication. |
+| `GET` | `/projects/:id` | Return one project by ID. Requires authentication. |
+| `PATCH` | `/projects/:id` | Update a project. Requires the project owner or an administrator. |
+| `DELETE` | `/projects/:id` | Delete a project. Requires the project owner or an administrator. |
+| `GET` | `/tasks` | Return all tasks. Requires authentication. |
+| `POST` | `/tasks` | Create a task in a project. Requires the project owner or an administrator. |
+| `GET` | `/tasks/:id` | Return one task by ID. Requires authentication. |
+| `PATCH` | `/tasks/:id` | Update a task. Requires the task's project owner or an administrator. |
+| `DELETE` | `/tasks/:id` | Delete a task. Requires the task's project owner or an administrator. |
 
-## Task JSON Shape
+## Authorization and Ownership
 
-A task response includes:
+Accounts registered through the API receive the `user` role. The `GET /users`
+route is the administrator-only operation. A normal user receives `403
+Forbidden` when attempting to access it, while an administrator can use it to
+view all users.
+
+An authenticated user can create a project, and that user becomes the project's
+owner. Project owners can update or delete their own projects. Tasks belong to
+projects, so only the project owner can create, update, or delete tasks in that
+project. Assigning a task to another user does not make that user the project
+owner. An administrator can manage any project or task.
+
+Requests without a valid JWT receive `401 Unauthorized`. Authenticated users
+without permission receive `403 Forbidden`. Requests for resources that do not
+exist receive `404 Not Found`.
+
+## Response JSON Shapes
+
+A user response does not include the password or password hash:
+
+```json
+{
+  "id": 1,
+  "name": "Ada Lovelace",
+  "email": "ada@example.com",
+  "role": "user",
+  "createdAt": "2026-07-31T12:00:00.000Z"
+}
+```
+
+A project response includes its owner's user ID:
+
+```json
+{
+  "id": 1,
+  "name": "Checkpoint 2",
+  "description": "Authentication and authorization",
+  "ownerId": 1,
+  "createdAt": "2026-07-31T12:00:00.000Z"
+}
+```
+
+A task response includes its project and optional assigned user:
 
 ```json
 {
@@ -176,6 +386,8 @@ A task response includes:
   "title": "Create task API",
   "description": "Implement the first task endpoint",
   "status": "todo",
+  "projectId": 1,
+  "assignedTo": null,
   "createdAt": "2026-07-13T12:00:00.000Z",
   "updatedAt": "2026-07-13T12:00:00.000Z"
 }
@@ -183,7 +395,18 @@ A task response includes:
 
 ## Validation and Error Handling
 
-The API returns JSON error responses for invalid requests.
+The API returns JSON error responses and does not return password hashes.
+
+- `400 Bad Request` is used for invalid IDs, missing required fields, invalid
+  task statuses, and malformed JSON.
+- `401 Unauthorized` is used when a protected route receives a missing or
+  invalid JWT.
+- `403 Forbidden` is used when an authenticated user does not have the required
+  role or ownership.
+- `404 Not Found` is used when a requested user, project, or task does not
+  exist.
+- `409 Conflict` is used when registering an email that already exists.
+- `500 Internal Server Error` is used for unexpected database or server errors.
 
 Examples:
 
@@ -191,7 +414,7 @@ Creating a task without a title returns `400`:
 
 ```json
 {
-  "error": "Title is required"
+  "error": "Tasks must have a title"
 }
 ```
 
@@ -199,36 +422,9 @@ Requesting a task ID that does not exist returns `404`:
 
 ```json
 {
-  "error": "Task not found"
+  "error": "The specified task was not found"
 }
 ```
 
 ## Reflection Questions
-Answer the following questions in your README or in a separate file such as answers.md.
 
-1.What is the difference between an in-memory API and a database-backed API?
-
-The difference between an in-memory API and a database-backed API, is that one stores information in memory during runtime, and the other stores information in an external database. With an in-memory API the information is saved on the server, while it is running. This means that information can only be stored so long as the server is running, and once it is taken down all of that information is lost. This means the information is not persistent. However, with a database-backed API the information is stored in an independent external database. While maintaining a database, alongside the API, is more work it allows stored information to be saved even when the server is no longer running. Is is necessary for pretty much all practical production environments, as losing important information due to a server outage would be devestating. 
-
-2.Why is it useful to separate routes, services, and database logic?
-
-The reason it is useful to separate routes, services, and database logic, is that it makes the overall codebase easier to understand, maintain, and test. Breaking the overall application into smaller, specialized sections allows developers to work on one part of the system without having to search through one massive file containing irrelevant code focused on other parts. For example, if a developer wanted to add, modify, or remouve a route, they could go directly to the routes file, instead of having to search through service and database logic too. This seperation is especially useful when updates are required, as one section can be changed without needed to change the entire application. Finally it improves testing as routes, services, and database logic can be tested individually instead of all together. 
-
-3.What HTTP status codes did you use, and why?
-
-The status codes I used were `200`, `201`, `204`, `400`, `404`, and `500`.
-
-- 200 was used to show that a task was succesfully received and processed.
-- 201 was used to show that a task was succesfully created.
-- 204 was used to show that a task was successfully deleted, and there is no response body to return.
-- 400 was used to inform the user that an invalid request was made.
-- 404 was used to inform the user that a valid request was made, but the specific task id requested could not be found.
-- 500 was used to inform the user of an internal server or database error.
-
-4.What happens when a client requests a task ID that does not exist?
-
-When a client requests a task ID that does not exist, the server catches that during taskID verification, and sends a `404` error to inform the user the specified task was not found.
-
-5.What was the hardest part of connecting the API to PostgreSQL?
-
-The hardest part of connecting the API to PostgreSQL, was writing the SQL queries in `taskService.ts`. With a decent amount of the connection work already being completed in the starter, the hardest thing was figuring out how to write sql queries that matched the logic expected of the routes. It has been a long time since I've had to work with sql statements, so I found refreshing myself on how to use placeholders and certain statements to be the most time consuming aspect of the database connection. 

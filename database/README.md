@@ -2,6 +2,10 @@
 
 This project uses PostgreSQL running in Docker.
 
+The database name, username, and password must be provided in the root `.env`
+file. Copy `.env.example` to `.env` and replace each placeholder before starting
+PostgreSQL.
+
 ## Setting up the database
 
 ```shell
@@ -21,14 +25,15 @@ docker compose down -v
 or 
 npm run db:reset
 ```
-## Default connection settings
-- Database: cs553 
-- User: postgres 
-- Password: postgres 
-- Port: 5432
+## Database connection settings
+
+The root `.env` file must define:
 
 ```dotenv
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cs553
+POSTGRES_DB=cs553
+POSTGRES_USER=replace-this-value
+POSTGRES_PASSWORD=replace-this-value
+DATABASE_URL=postgresql://replace-this-value:replace-this-value@localhost:5432/cs553
 ```
 
 ## Creating tables
@@ -36,5 +41,5 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cs553
 Run the schema file against the local database after PostgreSQL is running:
 
 ```shell
-psql postgresql://postgres:postgres@localhost:5432/cs553 -f database/schema.sql
+psql "$DATABASE_URL" -f database/schema.sql
 ```

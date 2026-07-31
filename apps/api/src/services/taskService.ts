@@ -1,11 +1,15 @@
 import { pool } from "../db/pool";
 
+export type TaskStatus = "todo" | "in_progress" | "done";
+
 // The task DTO schema
 export type Task = {
 	id: number;
 	title: string;
 	description: string | null;
-	status: string;
+	status: TaskStatus;
+	projectId: number;
+	assignedTo: number | null;
 	createdAt: Date;
 	updatedAt: Date;
 };
@@ -14,19 +18,25 @@ export type Task = {
 export type CreateTaskInput = {
 	title: string;
 	description?: string | null;
+	projectId: number;
+	assignedTo?: number | null;
 };
 
 // schema for updating a task
 export type UpdateTaskInput = {
 	title?: string;
 	description?: string | null;
-	status?: string;
+	status?: TaskStatus;
+	assignedTo?: number | null;
 };
 
+// list the task fields returned by database queries
 const taskFields = `id,
                    title,
                    description,
                    status,
+                   project_id AS "projectId",
+                   assigned_to AS "assignedTo",
                    created_at AS "createdAt",
                    updated_at AS "updatedAt"`;
 
@@ -56,10 +66,20 @@ export async function getTaskById(id: number): Promise<Task | null> {
 // create task (promise to ......)
 export async function createTask(input: CreateTaskInput): Promise<Task> {
 	const result = await pool.query<Task>(
-		`INSERT INTO tasks (title, description)
-		 VALUES ($1, $2)
+		`INSERT INTO tasks (
+		     title,
+		     description,
+		     project_id,
+		     assigned_to
+		 )
+		 VALUES ($1, $2, $3, $4)
 		 RETURNING ${taskFields}`,
-		[input.title, input.description ?? null],
+		[
+			input.title,
+			input.description ?? null,
+			input.projectId,
+			input.assignedTo ?? null,
+		],
 	);
 
 	return result.rows[0];
@@ -75,8 +95,9 @@ export async function updateTask(
 		 SET title = CASE WHEN $1::boolean THEN $2::text ELSE title END,
 		     description = CASE WHEN $3::boolean THEN $4::text ELSE description END,
 		     status = CASE WHEN $5::boolean THEN $6::text ELSE status END,
+		     assigned_to = CASE WHEN $7::boolean THEN $8::integer ELSE assigned_to END,
 		     updated_at = NOW()
-		 WHERE id = $7
+		 WHERE id = $9
 		 RETURNING ${taskFields}`,
 		[
 			input.title !== undefined,
@@ -85,6 +106,8 @@ export async function updateTask(
 			input.description ?? null,
 			input.status !== undefined,
 			input.status ?? null,
+			Object.prototype.hasOwnProperty.call(input, "assignedTo"),
+			input.assignedTo ?? null,
 			id,
 		],
 	);
