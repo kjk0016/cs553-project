@@ -107,8 +107,10 @@ PORT=3000
 Generate a separate JWT secret locally:
 
 ```shell
-openssl rand -hex 32
+openssl rand -hex 16
 ```
+
+You could also just manually choose a password for the jwt secret, but I thought using openssl to generate the random hex string would be more realistic.
 
 Copy the generated value into `.env`:
 
@@ -165,19 +167,6 @@ psql "$DATABASE_URL" -f database/schema.sql
 This command uses the database connection created in `.env` and loaded into the
 current shell. The schema creates the `users`, `projects`, and `tasks` tables.
 
-## Creating an Administrator
-
-All accounts created through `POST /auth/register` receive the normal `user`
-role. Register the account first, then promote it directly in PostgreSQL:
-
-```shell
-psql "$DATABASE_URL" -c "UPDATE users SET role = 'admin' WHERE email = 'admin@example.com';"
-```
-
-Replace `admin@example.com` with any email. Log in
-again after changing the role so that the new JWT contains the `admin` role.
-Clients cannot choose the administrator role during registration.
-
 ## Starting the Server
 
 Navigate to the repo's root and run
@@ -194,11 +183,37 @@ http://localhost:3000
 
 To use a different port, set `PORT` in the root `.env` file:
 
+## Creating an Administrator
+
+All accounts created through `POST /auth/register` receive the normal `user`
+role. Register the account first, then promote it directly in PostgreSQL:
+
+Note: since this will be done in a terminal different from the one used to start the server, its important to remember to rerun the following in the new one.
+```shell
+set -a
+source .env
+set +a
+```
+
+1. Register the admin
+```shell
+curl -X POST http://localhost:3000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Administrator","email":"admin@example.com","password":"AdminPassword123!"}'
+```
+
+2. Promote the account to admin
+```shell
+psql "$DATABASE_URL" -c "UPDATE users SET role = 'admin' WHERE email = 'admin@example.com';"
+```
+
+Replace `admin@example.com` with the correct email. Log in
+again after changing the role so that the new JWT contains the `admin` role.
+
 ## Testing
 
 The automated tests use PostgreSQL and clear the `users`, `projects`, and
-`tasks` tables before each test. Use a separate test database so development
-data is not deleted.
+`tasks` tables before each test. In the real world we'd need to use a separate test database so development data is not deleted. To follow that practice, follow the commands below.
 
 To create the test database and apply the schema:
 
@@ -235,7 +250,7 @@ curl http://localhost:3000/health
 ```shell
 curl -X POST http://localhost:3000/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"name":"Ada Lovelace","email":"ada@example.com","password":"example-password"}'
+  -d '{"name":"john doe","email":"jd@example.com","password":"password"}'
 ```
 
 ### Logging In
@@ -243,7 +258,7 @@ curl -X POST http://localhost:3000/auth/register \
 ```shell
 curl -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"ada@example.com","password":"example-password"}'
+  -d '{"email":"jd@example.com","password":"password"}'
 ```
 
 Login returns the user and an `accessToken`:
@@ -255,13 +270,18 @@ Login returns the user and an `accessToken`:
   "expiresIn": "1h",
   "user": {
     "id": 1,
-    "name": "Ada Lovelace",
-    "email": "ada@example.com",
+    "name": "john doe",
+    "email": "jd@example.com",
     "role": "user",
     "createdAt": "2026-07-31T12:00:00.000Z"
   }
 }
 ```
+run:
+```shell
+export ACCESS_TOKEN="<token-value>"
+```
+To make following manual commands easier.
 
 ### Sending a JWT with a Request
 
@@ -277,7 +297,7 @@ Create a project:
 
 ```shell
 curl -X POST http://localhost:3000/projects \
-  -H "Authorization: Bearer <access-token>" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Checkpoint 2","description":"Authentication and authorization"}'
 ```
@@ -286,7 +306,7 @@ Create a task associated with the project:
 
 ```shell
 curl -X POST http://localhost:3000/tasks \
-  -H "Authorization: Bearer <access-token>" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"title":"Create task API","description":"Implement CRUD routes","projectId":1}'
 ```
@@ -295,14 +315,14 @@ Get all tasks:
 
 ```shell
 curl http://localhost:3000/tasks \
-  -H "Authorization: Bearer <access-token>"
+  -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
 Update a task:
 
 ```shell
 curl -X PATCH http://localhost:3000/tasks/1 \
-  -H "Authorization: Bearer <access-token>" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"status":"done"}'
 ```
@@ -311,7 +331,7 @@ Delete a task:
 
 ```shell
 curl -X DELETE http://localhost:3000/tasks/1 \
-  -H "Authorization: Bearer <access-token>"
+  -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
 ## Supported Routes
@@ -359,8 +379,8 @@ A user response does not include the password or password hash:
 ```json
 {
   "id": 1,
-  "name": "Ada Lovelace",
-  "email": "ada@example.com",
+  "name": "john doe",
+  "email": "jd@example.com",
   "role": "user",
   "createdAt": "2026-07-31T12:00:00.000Z"
 }
