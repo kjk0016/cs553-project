@@ -446,3 +446,31 @@ Requesting a task ID that does not exist returns `404`:
 
 ## Reflection Questions
 
+1. What is the difference between authentication and authorization?
+   
+Authentication focuses on verifying that an incoming request is allowed, ie is the request coming from a valid user. Autherization focuses on verifying whether the allowed user is allowed to do what its requesting.
+
+2. Why should passwords be hashed instead of stored directly?
+
+Applications should never store passwords as plain text, as if the database every gets compromised every user's password will be exposed. Instead the server should store a salted password hash.
+
+3. What information did you include in your JWT, and why?
+
+I included sub, email, role, iat, and exp. Sub is needed for the user's id, email is needed as a unique one was required, the role is needed to distingious permissions, iat is default, and exp is needed for security reasons so that even if a token is comprimised it can't continue to be used forever. 
+
+4. What is the difference between a 401 response and a 403 response?
+
+401 is used to tell a user they failed to authenticate/login. A 403 is used to tell a user they had a successful authentication/login, but tried to request something they don't have permission to.
+
+5. Where does your application perform role or ownership checks?
+
+My application performs a role check for the route `GET /users`. For this route the amin role is needed to list all of the users. Ownership checks are performed when a user tries to delete a project or task, update a task, or create a new task in a project.
+
+6. How are users, projects, and tasks related in your database?
+
+Each user can own multiple projects. In addition to this, each project can have multiple tasks within it. Deleting a project will delete all of its associated tasks.
+
+7. What was the hardest part of adding authentication or authorization?
+
+
+
