@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import jwt, { type SignOptions } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 import {
 	createUser,
@@ -21,13 +21,8 @@ export type LoginResult = {
 	user: User;
 };
 
-// configure the access token lifetime and signing algorithm
+// configure the access token lifetime
 const jwtExpiresIn = "1h";
-
-const jwtOptions: SignOptions = {
-	algorithm: "HS256",
-	expiresIn: jwtExpiresIn,
-};
 
 // register a new user after hashing their password
 export async function registerUser(input: RegisterInput): Promise<User> {
@@ -67,7 +62,7 @@ export async function loginUser(
 		},
 		env.jwtSecret,
 		{
-			...jwtOptions,
+			expiresIn: jwtExpiresIn,
 			subject: String(user.id),
 		},
 	);

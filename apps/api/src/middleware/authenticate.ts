@@ -30,28 +30,14 @@ export function authenticate(
 
 	// verify the token and make its user information available to later routes
 	try {
-		const payload = jwt.verify(token, env.jwtSecret, {
-			algorithms: ["HS256"],
-		});
-
-		if (typeof payload === "string" || typeof payload.sub !== "string" || typeof payload.email !== "string" || (payload.role !== "user" && payload.role !== "admin")) {
-			res.status(401).json({
-				error: "Authentication required",
-			});
-			return;
-		}
-
-		const userId = Number(payload.sub);
-
-		if (!Number.isInteger(userId) || userId <= 0) {
-			res.status(401).json({
-				error: "Authentication required",
-			});
-			return;
-		}
+		const payload = jwt.verify(token, env.jwtSecret) as {
+			sub: string;
+			email: string;
+			role: UserRole;
+		};
 
 		res.locals.user = {
-			id: userId,
+			id: Number(payload.sub),
 			email: payload.email,
 			role: payload.role,
 		} satisfies AuthenticatedUser;

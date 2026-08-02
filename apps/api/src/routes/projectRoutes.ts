@@ -9,7 +9,6 @@ import {
 	deleteProject,
 	getAllProjects,
 	getProjectById,
-	updateProject,
 } from "../services/projectService";
 
 export const projectRoutes = Router();
@@ -102,82 +101,6 @@ projectRoutes.post("/projects", async (req, res) => {
 		console.error("Failed to create project:", error);
 		res.status(500).json({
 			error: "Failed to create project",
-		});
-	}
-});
-
-// route to update a project
-projectRoutes.patch("/projects/:id", async (req, res) => {
-	const projectId = parseProjectId(req.params.id);
-	const user = res.locals.user as AuthenticatedUser;
-
-	if (projectId === null) {
-		res.status(400).json({
-			error: "Project ID must be a positive integer",
-		});
-		return;
-	}
-
-	const body = req.body ?? {};
-	const hasName = Object.prototype.hasOwnProperty.call(body, "name");
-	const hasDescription = Object.prototype.hasOwnProperty.call(
-		body,
-		"description",
-	);
-
-	if (!hasName && !hasDescription) {
-		res.status(400).json({
-			error: "Provide name or description to update",
-		});
-		return;
-	}
-
-	const { name, description } = body;
-
-	if (
-		hasName &&
-		(typeof name !== "string" || name.trim().length === 0)
-	) {
-		res.status(400).json({
-			error: "Name must be a string",
-		});
-		return;
-	}
-
-	if (hasDescription && description !== null && typeof description !== "string") {
-		res.status(400).json({
-			error: "Description must be a string or null",
-		});
-		return;
-	}
-
-	try {
-		const existingProject = await getProjectById(projectId);
-
-		if (existingProject === null) {
-			res.status(404).json({
-				error: "The specified project was not found",
-			});
-			return;
-		}
-
-		if (!canManageProject(user, existingProject.ownerId)) {
-			res.status(403).json({
-				error: "You do not have permission to update this project",
-			});
-			return;
-		}
-
-		const project = await updateProject(projectId, {
-			name: hasName ? name.trim() : undefined,
-			description: hasDescription ? description : undefined,
-		});
-
-		res.json(project);
-	} catch (error) {
-		console.error("Failed to update project:", error);
-		res.status(500).json({
-			error: "Failed to update project",
 		});
 	}
 });

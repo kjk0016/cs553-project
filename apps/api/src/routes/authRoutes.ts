@@ -1,7 +1,5 @@
 import { Router } from "express";
-import { authenticate, type AuthenticatedUser } from "../middleware/authenticate";
 import { loginUser, registerUser } from "../services/authService";
-import { getUserById } from "../services/userService";
 
 export const authRoutes = Router();
 
@@ -36,9 +34,9 @@ authRoutes.post("/auth/register", async (req, res) => {
 	}
 
 	// validate the user's password
-	if (typeof password !== "string" || password.length < 8) {
+	if (typeof password !== "string" || password.length === 0) {
 		res.status(400).json({
-			error: "Password must contain at least 8 characters",
+			error: "Password is required",
 		});
 		return;
 	}
@@ -102,25 +100,3 @@ authRoutes.post("/auth/login", async (req, res) => {
 	}
 });
 
-// route to return the currently authenticated user
-authRoutes.get("/auth/me", authenticate, async (_req, res) => {
-	const authenticatedUser = res.locals.user as AuthenticatedUser;
-
-	try {
-		const user = await getUserById(authenticatedUser.id);
-
-		if (user === null) {
-			res.status(401).json({
-				error: "The authenticated user no longer exists",
-			});
-			return;
-		}
-
-		res.json(user);
-	} catch (error) {
-		console.error("Failed to get authenticated user:", error);
-		res.status(500).json({
-			error: "Failed to get authenticated user",
-		});
-	}
-});

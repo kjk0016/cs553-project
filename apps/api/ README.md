@@ -50,7 +50,7 @@ apps/api/
 | `src/db/pool.ts` | Creates the shared PostgreSQL connection pool. |
 | `src/middleware/authenticate.ts` | Verifies Bearer tokens and stores the authenticated user for later routes. |
 | `src/middleware/authorize.ts` | Checks administrator roles and project ownership. |
-| `src/routes/authRoutes.ts` | Defines registration, login, and current-user routes. |
+| `src/routes/authRoutes.ts` | Defines registration and login routes. |
 | `src/routes/projectRoutes.ts` | Defines project routes, validation, and ownership checks. |
 | `src/routes/taskRoutes.ts` | Defines the task HTTP routes and request validation. |
 | `src/routes/userRoutes.ts` | Defines the administrator-only user route. |
@@ -342,12 +342,10 @@ curl -X DELETE http://localhost:3000/tasks/1 \
 | `GET` | `/db-health` | Check whether the API can connect to PostgreSQL. |
 | `POST` | `/auth/register` | Register a normal user account. |
 | `POST` | `/auth/login` | Log in and receive a JWT access token. |
-| `GET` | `/auth/me` | Return the authenticated user. Requires authentication. |
 | `GET` | `/users` | Return all users. Requires authentication and the `admin` role. |
 | `GET` | `/projects` | Return all projects. Requires authentication. |
 | `POST` | `/projects` | Create a project owned by the authenticated user. Requires authentication. |
 | `GET` | `/projects/:id` | Return one project by ID. Requires authentication. |
-| `PATCH` | `/projects/:id` | Update a project. Requires the project owner or an administrator. |
 | `DELETE` | `/projects/:id` | Delete a project. Requires the project owner or an administrator. |
 | `GET` | `/tasks` | Return all tasks. Requires authentication. |
 | `POST` | `/tasks` | Create a task in a project. Requires the project owner or an administrator. |
