@@ -361,8 +361,8 @@ Forbidden` when attempting to access it, while an administrator can use it to
 view all users.
 
 An authenticated user can create a project, and that user becomes the project's
-owner. Project owners can update or delete their own projects. Tasks belong to
-projects, so only the project owner can create, update, or delete tasks in that
+owner. Project owners can delete their own projects. Tasks belong to
+projects, so only the project owner can create, or delete tasks in that
 project. Assigning a task to another user does not make that user the project
 owner. An administrator can manage any project or task.
 
